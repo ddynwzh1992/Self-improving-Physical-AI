@@ -1,0 +1,28 @@
+# Output files
+output/
+*.png
+*.jpg
+*.jpeg
+*.usd
+*.usda
+*.usdc
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.eggs/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
