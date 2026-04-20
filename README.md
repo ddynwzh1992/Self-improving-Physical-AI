@@ -1,6 +1,8 @@
-# Self-improving Physical AI — Manufacturing Robot Simulation
+# Self-improving Physical AI — Sim2Real Manufacturing Robot System
 
-A complete setup for running NVIDIA Isaac Sim robot simulations in manufacturing environments, controllable via natural language through [OpenClaw](https://github.com/openclaw/openclaw) AI agent connected to Telegram.
+A **self-improving robotics platform** that bridges simulation and reality. An AI agent controls both a simulated environment (NVIDIA Isaac Sim) and a real robot system, using **agent memory** to continuously learn from failures, adapt strategies, and transfer knowledge between sim and real domains.
+
+Built on [OpenClaw](https://github.com/openclaw/openclaw) AI agent connected to Telegram for natural language control.
 
 ## Architecture
 
@@ -9,70 +11,136 @@ graph TB
     subgraph User["🧑‍💻 User Layer"]
         TG["📱 Telegram<br/>Natural Language"]
         MAC["💻 Mac / PC<br/>WebRTC Viewer"]
+        DASH["📊 Dashboard<br/>Metrics & Logs"]
     end
 
     subgraph Agent["🤖 AI Agent Layer"]
-        OC["OpenClaw Gateway<br/><i>Node.js · LLM-powered</i>"]
-        SKILL["Isaac Sim Skill<br/><i>SKILL.md</i>"]
-        OC --- SKILL
+        OC["OpenClaw Gateway<br/><i>LLM-powered Orchestrator</i>"]
+        SKILL_SIM["Isaac Sim Skill<br/><i>Simulation Control</i>"]
+        SKILL_REAL["Real Robot Skill<br/><i>Hardware Control</i>"]
+        SKILL_S2R["Sim2Real Skill<br/><i>Transfer & Validation</i>"]
+        OC --- SKILL_SIM
+        OC --- SKILL_REAL
+        OC --- SKILL_S2R
     end
 
-    subgraph Simulation["🏭 Simulation Engine"]
-        DOCKER["Isaac Sim 6.0<br/><i>Docker · Headless</i>"]
-        subgraph scripts [" "]
+    subgraph Memory["🧠 Agent Memory"]
+        direction TB
+        EP["📝 Episodic Memory<br/><i>Task execution logs<br/>Success/failure records</i>"]
+        SEM["🌐 Semantic Memory<br/><i>Learned strategies<br/>Object properties · Grasp params</i>"]
+        PROC["⚡ Procedural Memory<br/><i>Optimized trajectories<br/>Calibration offsets</i>"]
+        DELTA["📊 Sim2Real Delta Log<br/><i>Discrepancy tracking<br/>Domain gap metrics</i>"]
+    end
+
+    subgraph Sim["🏭 Simulation (Digital Twin)"]
+        ISAAC["Isaac Sim 6.0<br/><i>Docker · Headless</i>"]
+        subgraph sim_scripts [" "]
             MS["🏗️ Scene Builder"]
             PP["🤖 Pick & Place"]
             RC["🎮 Robot Control"]
             SO["📦 Object Spawner"]
             CV["📸 Viewport Capture"]
         end
-        DOCKER --- scripts
+        ISAAC --- sim_scripts
+    end
+
+    subgraph Real["🦾 Real Robot System"]
+        ROS["ROS 2<br/><i>Robot Middleware</i>"]
+        DRIVER["Robot Driver<br/><i>Franka · UR · Custom</i>"]
+        SENSOR["Sensors<br/><i>RGB-D Camera · F/T Sensor</i>"]
+        GRIP["Gripper<br/><i>Parallel · Suction</i>"]
+        ROS --- DRIVER
+        ROS --- SENSOR
+        ROS --- GRIP
     end
 
     subgraph Infra["⚙️ Infrastructure"]
-        GPU["NVIDIA GPU<br/><i>L40S · RTX · 48GB VRAM</i>"]
+        GPU["NVIDIA GPU<br/><i>L40S · 48GB VRAM</i>"]
         WEBRTC["WebRTC Stream<br/><i>49100/TCP · 47998/UDP</i>"]
         USD["USD Scene Files<br/><i>OpenUSD Format</i>"]
     end
 
     TG <-->|"Commands ·<br/>Images · Status"| OC
-    OC -->|"Execute<br/>Scripts"| DOCKER
-    DOCKER -->|"Physics ·<br/>RTX Rendering"| GPU
-    DOCKER <-->|"Save · Load<br/>Scenes"| USD
-    DOCKER -->|"Live 3D<br/>Video"| WEBRTC
-    WEBRTC <-->|"Real-time<br/>Interaction"| MAC
-    DOCKER -.->|"Screenshots"| OC
+    OC -->|"Sim Commands"| ISAAC
+    OC -->|"Real Commands"| ROS
+    OC <-->|"Read · Write<br/>Learn · Recall"| Memory
+    ISAAC -->|"Physics ·<br/>RTX Rendering"| GPU
+    ISAAC <-->|"Save · Load"| USD
+    ISAAC -->|"Live 3D"| WEBRTC
+    WEBRTC <-->|"Real-time View"| MAC
+
+    ISAAC <-.->|"🔄 Sim2Real<br/>Transfer"| ROS
+    EP <-.->|"Compare<br/>Outcomes"| DELTA
+    SENSOR -.->|"Real-world<br/>Observations"| OC
+    DASH <-.- Memory
 
     style User fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px,color:#1B5E20
     style Agent fill:#E3F2FD,stroke:#2196F3,stroke-width:2px,color:#0D47A1
-    style Simulation fill:#FFF3E0,stroke:#FF9800,stroke-width:2px,color:#E65100
+    style Memory fill:#FFF9C4,stroke:#F9A825,stroke-width:2px,color:#F57F17
+    style Sim fill:#FFF3E0,stroke:#FF9800,stroke-width:2px,color:#E65100
+    style Real fill:#FCE4EC,stroke:#E91E63,stroke-width:2px,color:#880E4F
     style Infra fill:#F3E5F5,stroke:#9C27B0,stroke-width:2px,color:#4A148C
-    style scripts fill:#FFF8E1,stroke:#FFC107,stroke-width:1px
+    style sim_scripts fill:#FFF8E1,stroke:#FFC107,stroke-width:1px
 ```
 
-### Data Flow
+### Self-Improving Loop
+
+```mermaid
+graph LR
+    subgraph loop ["🔄 Continuous Improvement Cycle"]
+        direction LR
+        A["1️⃣ Plan<br/><i>Agent plans task<br/>from memory</i>"] --> B["2️⃣ Simulate<br/><i>Execute in<br/>Isaac Sim</i>"]
+        B --> C["3️⃣ Validate<br/><i>Check physics<br/>& feasibility</i>"]
+        C --> D["4️⃣ Execute<br/><i>Run on real<br/>robot</i>"]
+        D --> E["5️⃣ Observe<br/><i>Capture sensor<br/>data & outcome</i>"]
+        E --> F["6️⃣ Learn<br/><i>Compare sim vs real<br/>Update memory</i>"]
+        F --> A
+    end
+
+    style loop fill:#F3E5F5,stroke:#9C27B0,stroke-width:2px
+    style A fill:#E3F2FD,stroke:#2196F3,color:#0D47A1
+    style B fill:#FFF3E0,stroke:#FF9800,color:#E65100
+    style C fill:#FFF9C4,stroke:#F9A825,color:#F57F17
+    style D fill:#FCE4EC,stroke:#E91E63,color:#880E4F
+    style E fill:#E8F5E9,stroke:#4CAF50,color:#1B5E20
+    style F fill:#EDE7F6,stroke:#673AB7,color:#311B92
+```
+
+### Sim2Real Data Flow
 
 ```mermaid
 sequenceDiagram
-    participant U as 📱 User (Telegram)
-    participant A as 🤖 OpenClaw Agent
-    participant I as 🏭 Isaac Sim (Docker)
-    participant G as ⚡ NVIDIA GPU
+    participant U as 📱 User
+    participant A as 🤖 Agent
+    participant M as 🧠 Memory
+    participant S as 🏭 Isaac Sim
+    participant R as 🦾 Real Robot
 
-    U->>A: "Create a factory scene<br/>with a robot arm"
-    A->>A: Match intent → Isaac Sim Skill
-    A->>I: Execute manufacturing_scene.py
-    I->>G: Build USD scene + RTX render
-    G-->>I: Rendered frame
-    I-->>A: Screenshot (PNG)
-    A-->>U: 🖼️ Factory scene image
+    U->>A: "Pick up the gear from the conveyor"
 
-    U->>A: "Pick up the red box"
-    A->>I: Execute pick_and_place.py --pick-index 0
-    I->>G: Physics simulation + rendering
-    G-->>I: Simulation complete
-    I-->>A: Result + screenshot
-    A-->>U: ✅ "Box picked and placed!" + 🖼️
+    Note over A,M: 1. RECALL — Check memory for similar tasks
+    A->>M: Query: "pick gear conveyor"
+    M-->>A: Past attempts: grasp_offset=-0.02m,<br/>success_rate=78%, best_approach=top-down
+
+    Note over A,S: 2. SIMULATE — Plan & validate in sim
+    A->>S: Execute pick_and_place.py<br/>with learned parameters
+    S-->>A: ✅ Sim success · trajectory + timing data
+
+    Note over A,R: 3. EXECUTE — Run on real robot
+    A->>R: Send trajectory via ROS 2
+    R-->>A: Execution result + sensor data<br/>⚠️ Slip detected at z=0.31m
+
+    Note over A,M: 4. LEARN — Update memory with real outcome
+    A->>M: Log: sim_success=true, real_success=partial<br/>delta: grip_force +0.5N needed at z<0.35m
+    A->>M: Update grasp strategy:<br/>increase_force_near_surface=true
+
+    Note over A,S: 5. IMPROVE — Update simulation model
+    A->>S: Adjust friction params:<br/>gear_surface_friction=0.4→0.35
+    S-->>A: Sim model updated
+
+    A-->>U: "Picked up the gear ✅<br/>Had to adjust grip force.<br/>Updated my model for next time."
+
+    Note over A,M: Memory now contains improved<br/>strategy for future tasks
 ```
 
 ## Table of Contents
@@ -85,8 +153,9 @@ sequenceDiagram
 6. [Live Viewing via WebRTC Streaming](#5-live-viewing-via-webrtc-streaming)
 7. [Connecting from Mac](#6-connecting-from-mac)
 8. [OpenClaw Skill Integration](#7-openclaw-skill-integration)
-9. [Isaac Sim 6.0.0 API Reference](#8-isaac-sim-600-api-reference)
-10. [Troubleshooting](#troubleshooting)
+9. [Sim2Real Architecture & Agent Memory](#8-sim2real-architecture--agent-memory)
+10. [Isaac Sim 6.0.0 API Reference](#9-isaac-sim-600-api-reference)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -413,7 +482,120 @@ Now you can control the simulation via Telegram:
 
 ---
 
-## 8. Isaac Sim 6.0.0 API Reference
+## 8. Sim2Real Architecture & Agent Memory
+
+This project is designed as a **self-improving system** where the AI agent learns from both simulation and real-world execution, continuously closing the sim-to-real gap.
+
+### Core Concept
+
+Traditional robotics: program once → deploy → break when conditions change.
+
+**Self-improving Physical AI**: simulate → execute → observe → learn → improve → repeat.
+
+The AI agent maintains **persistent memory** across all interactions, building an ever-growing knowledge base of:
+- What works (and what doesn't) for each type of task
+- How simulation predictions differ from real-world outcomes
+- Optimized parameters learned from experience
+
+### Agent Memory Architecture
+
+| Memory Type | Purpose | Example |
+|---|---|---|
+| **Episodic Memory** | Logs every task execution with context, parameters, and outcome | "Picked gear #3 at t=14:32, top-down approach, grip_force=8N → success" |
+| **Semantic Memory** | Stores learned facts about objects, environments, and strategies | "Aluminum gears require 15% more grip force than plastic ones" |
+| **Procedural Memory** | Caches optimized trajectories and calibration offsets | "For conveyor pick: approach_offset_z=+0.02m, retreat_speed=0.1m/s" |
+| **Sim2Real Delta Log** | Tracks discrepancies between sim and real outcomes | "Friction in sim=0.4 but real≈0.35 for oiled metal surfaces" |
+
+### Self-Improving Loop
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│  1. PLAN ──→ 2. SIMULATE ──→ 3. VALIDATE ──→ 4. EXECUTE        │
+│    ↑                                              │             │
+│    │                                              ↓             │
+│  6. LEARN ←──────────────── 5. OBSERVE ←──── Real Robot         │
+│    │                                                            │
+│    └──→ Update Memory ──→ Refine Sim Model ──→ Next Cycle       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Step 1 — Plan:** Agent queries memory for similar past tasks. Retrieves best-known strategy, parameters, and potential failure modes.
+
+**Step 2 — Simulate:** Executes the task in Isaac Sim with learned parameters. Tests edge cases with domain randomization (lighting, friction, object pose variations).
+
+**Step 3 — Validate:** Checks simulation results — collision-free? Stable grasp? Within joint limits? If sim fails, iterate in sim (cheap & fast) before touching the real robot.
+
+**Step 4 — Execute:** Sends validated trajectory to the real robot via ROS 2. Monitors execution in real-time via sensor feedback.
+
+**Step 5 — Observe:** Captures real-world outcome — RGB-D images, force/torque data, success/failure, timing. Compares against simulation predictions.
+
+**Step 6 — Learn:** Logs the episode to memory. If sim predicted success but real failed (or vice versa), records the **delta** and updates simulation parameters (friction, mass, latency offsets) to reduce future discrepancies.
+
+### Real Robot Integration (ROS 2)
+
+The real robot system connects via ROS 2:
+
+```
+OpenClaw Agent
+    │
+    ├──→ Isaac Sim (simulation)
+    │       └── /isaac_sim/joint_states (simulated)
+    │
+    └──→ ROS 2 Bridge
+            ├── /joint_commands (real robot)
+            ├── /gripper/command
+            ├── /camera/color/image_raw (RGB)
+            ├── /camera/depth/image_raw (Depth)
+            └── /force_torque_sensor/wrench
+```
+
+Supported robot platforms:
+- **Franka Emika Panda** — via `franka_ros2`
+- **Universal Robots (UR5/UR10)** — via `ur_robot_driver`
+- **Custom robots** — any ROS 2-compatible driver
+
+### Domain Randomization for Sim2Real
+
+To bridge the sim-to-real gap, the simulation applies randomization:
+
+```python
+# Example: randomize lighting, object colors, friction
+randomization_params = {
+    "lighting_intensity": (200, 800),     # lux
+    "object_friction": (0.2, 0.6),        # coefficient
+    "object_color_hsv_shift": (-0.1, 0.1),
+    "camera_noise_std": 0.01,             # gaussian noise
+    "table_height_offset": (-0.005, 0.005) # meters
+}
+```
+
+This trains the agent's perception and control to be **robust** across real-world variations.
+
+### Memory File Structure
+
+```
+memory/
+├── episodes/
+│   ├── 2026-04-20_pick_gear_001.json     # Individual task logs
+│   ├── 2026-04-20_pick_gear_002.json
+│   └── ...
+├── semantic/
+│   ├── objects.json                       # Learned object properties
+│   ├── strategies.json                    # Task strategies
+│   └── environment.json                   # Environment model
+├── procedural/
+│   ├── trajectories/                      # Cached optimal trajectories
+│   └── calibration.json                   # Sim2Real calibration offsets
+└── sim2real/
+    ├── delta_log.json                     # Sim vs Real discrepancies
+    └── domain_params.json                 # Tuned simulation parameters
+```
+
+---
+
+## 9. Isaac Sim 6.0.0 API Reference
 
 Isaac Sim 6.0.0 introduced new namespace imports (changed from 5.x). All scripts in this repository already use the correct 6.0.0 imports.
 

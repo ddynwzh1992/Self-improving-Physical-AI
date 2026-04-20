@@ -1,55 +1,62 @@
-# System Architecture
+# System Architecture — Self-improving Physical AI
 
-```mermaid
-graph TB
-    subgraph User["🧑‍💻 User Layer"]
-        TG["📱 Telegram Client"]
-        MAC["💻 Mac/PC<br/>Streaming Client"]
-    end
+## Overview
 
-    subgraph Agent["🤖 AI Agent Layer"]
-        OC["OpenClaw Gateway<br/><small>Node.js</small>"]
-        SKILL["Isaac Sim Skill<br/><small>SKILL.md</small>"]
-        OC --> SKILL
-    end
+This system bridges simulation and reality through an AI agent that continuously learns from both domains.
 
-    subgraph Simulation["🏭 Simulation Layer"]
-        direction TB
-        DOCKER["Docker Container<br/><small>nvcr.io/nvidia/isaac-sim:6.0.0</small>"]
-        
-        subgraph Scripts["Python Scripts"]
-            MS["manufacturing_scene.py<br/><small>Factory Environment</small>"]
-            PP["pick_and_place.py<br/><small>Robot Tasks</small>"]
-            RC["robot_control.py<br/><small>Arm Control</small>"]
-            SO["spawn_objects.py<br/><small>Object Spawner</small>"]
-            CV["capture_viewport.py<br/><small>Screenshot</small>"]
-        end
-        
-        DOCKER --> Scripts
-    end
+### Key Innovation
 
-    subgraph Infra["⚙️ Infrastructure Layer"]
-        GPU["NVIDIA L40S / RTX GPU<br/><small>48GB VRAM</small>"]
-        WEBRTC["WebRTC Streaming<br/><small>Port 49100/TCP + 47998/UDP</small>"]
-        USD["USD Scene Files<br/><small>OpenUSD Format</small>"]
-    end
+Unlike traditional sim2real transfer (one-way), this architecture creates a **bidirectional feedback loop**:
 
-    TG <-->|"Natural Language<br/>Commands & Images"| OC
-    OC -->|"Execute Simulation<br/>Scripts"| DOCKER
-    DOCKER -->|"Physics + RTX<br/>Rendering"| GPU
-    DOCKER -->|"Save/Load<br/>Scenes"| USD
-    DOCKER -->|"Live Video<br/>Stream"| WEBRTC
-    WEBRTC <-->|"Real-time 3D<br/>Interaction"| MAC
-    DOCKER -->|"Screenshots<br/>PNG"| OC
-    OC -->|"Send Images<br/>& Results"| TG
+1. **Sim → Real**: Transfer validated trajectories, policies, and strategies
+2. **Real → Sim**: Feed real-world observations back to improve simulation fidelity
+3. **Memory**: Persistent agent memory connects both domains across sessions
 
-    classDef userStyle fill:#4CAF50,stroke:#388E3C,color:#fff,stroke-width:2px
-    classDef agentStyle fill:#2196F3,stroke:#1565C0,color:#fff,stroke-width:2px
-    classDef simStyle fill:#FF9800,stroke:#E65100,color:#fff,stroke-width:2px
-    classDef infraStyle fill:#9C27B0,stroke:#6A1B9A,color:#fff,stroke-width:2px
+## Architecture Layers
 
-    class TG,MAC userStyle
-    class OC,SKILL agentStyle
-    class DOCKER,MS,PP,RC,SO,CV simStyle
-    class GPU,WEBRTC,USD infraStyle
+### 1. User Layer
+- **Telegram** — Natural language interface for commanding robots
+- **WebRTC Viewer** — Real-time 3D visualization of simulation
+- **Dashboard** — Monitoring metrics, memory state, sim2real gap tracking
+
+### 2. AI Agent Layer (OpenClaw)
+- **Orchestrator** — LLM-powered decision engine
+- **Isaac Sim Skill** — Controls simulation environment
+- **Real Robot Skill** — Controls physical hardware via ROS 2
+- **Sim2Real Skill** — Manages transfer, validation, and domain adaptation
+
+### 3. Agent Memory
+- **Episodic** — Every task execution logged with full context
+- **Semantic** — Learned knowledge (object properties, environment models)
+- **Procedural** — Optimized trajectories and calibration data
+- **Sim2Real Delta** — Discrepancy tracking between simulation and reality
+
+### 4. Simulation (Digital Twin)
+- **NVIDIA Isaac Sim 6.0** — Physics simulation with RTX rendering
+- **USD scenes** — Persistent scene format (OpenUSD)
+- **Domain Randomization** — Robustness training across variations
+
+### 5. Real Robot System
+- **ROS 2** — Robot middleware
+- **Robot Drivers** — Franka, UR, custom arms
+- **Sensors** — RGB-D cameras, force/torque sensors
+- **Grippers** — Parallel, suction, custom end-effectors
+
+### 6. Infrastructure
+- **NVIDIA GPU** — RTX rendering + physics simulation
+- **WebRTC** — Low-latency streaming
+- **OpenUSD** — Scene interchange format
+
+## Self-Improving Cycle
+
 ```
+PLAN → SIMULATE → VALIDATE → EXECUTE → OBSERVE → LEARN → (repeat)
+  ↑                                                    │
+  └────────────── Memory Update ───────────────────────┘
+```
+
+Each cycle improves:
+- **Simulation fidelity** (physics parameters get closer to reality)
+- **Task success rate** (strategies refined from experience)
+- **Transfer accuracy** (calibration offsets tuned over time)
+- **Failure prediction** (agent learns to anticipate real-world issues)
