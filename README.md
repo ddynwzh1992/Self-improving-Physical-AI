@@ -4,9 +4,75 @@ A complete setup for running NVIDIA Isaac Sim robot simulations in manufacturing
 
 ## Architecture
 
+```mermaid
+graph TB
+    subgraph User["🧑‍💻 User Layer"]
+        TG["📱 Telegram<br/>Natural Language"]
+        MAC["💻 Mac / PC<br/>WebRTC Viewer"]
+    end
+
+    subgraph Agent["🤖 AI Agent Layer"]
+        OC["OpenClaw Gateway<br/><i>Node.js · LLM-powered</i>"]
+        SKILL["Isaac Sim Skill<br/><i>SKILL.md</i>"]
+        OC --- SKILL
+    end
+
+    subgraph Simulation["🏭 Simulation Engine"]
+        DOCKER["Isaac Sim 6.0<br/><i>Docker · Headless</i>"]
+        subgraph scripts [" "]
+            MS["🏗️ Scene Builder"]
+            PP["🤖 Pick & Place"]
+            RC["🎮 Robot Control"]
+            SO["📦 Object Spawner"]
+            CV["📸 Viewport Capture"]
+        end
+        DOCKER --- scripts
+    end
+
+    subgraph Infra["⚙️ Infrastructure"]
+        GPU["NVIDIA GPU<br/><i>L40S · RTX · 48GB VRAM</i>"]
+        WEBRTC["WebRTC Stream<br/><i>49100/TCP · 47998/UDP</i>"]
+        USD["USD Scene Files<br/><i>OpenUSD Format</i>"]
+    end
+
+    TG <-->|"Commands ·<br/>Images · Status"| OC
+    OC -->|"Execute<br/>Scripts"| DOCKER
+    DOCKER -->|"Physics ·<br/>RTX Rendering"| GPU
+    DOCKER <-->|"Save · Load<br/>Scenes"| USD
+    DOCKER -->|"Live 3D<br/>Video"| WEBRTC
+    WEBRTC <-->|"Real-time<br/>Interaction"| MAC
+    DOCKER -.->|"Screenshots"| OC
+
+    style User fill:#E8F5E9,stroke:#4CAF50,stroke-width:2px,color:#1B5E20
+    style Agent fill:#E3F2FD,stroke:#2196F3,stroke-width:2px,color:#0D47A1
+    style Simulation fill:#FFF3E0,stroke:#FF9800,stroke-width:2px,color:#E65100
+    style Infra fill:#F3E5F5,stroke:#9C27B0,stroke-width:2px,color:#4A148C
+    style scripts fill:#FFF8E1,stroke:#FFC107,stroke-width:1px
 ```
-User (Telegram) → OpenClaw Agent → Isaac Sim (Docker) → GPU Rendering
-                                  → WebRTC Streaming → Mac/PC Viewer
+
+### Data Flow
+
+```mermaid
+sequenceDiagram
+    participant U as 📱 User (Telegram)
+    participant A as 🤖 OpenClaw Agent
+    participant I as 🏭 Isaac Sim (Docker)
+    participant G as ⚡ NVIDIA GPU
+
+    U->>A: "Create a factory scene<br/>with a robot arm"
+    A->>A: Match intent → Isaac Sim Skill
+    A->>I: Execute manufacturing_scene.py
+    I->>G: Build USD scene + RTX render
+    G-->>I: Rendered frame
+    I-->>A: Screenshot (PNG)
+    A-->>U: 🖼️ Factory scene image
+
+    U->>A: "Pick up the red box"
+    A->>I: Execute pick_and_place.py --pick-index 0
+    I->>G: Physics simulation + rendering
+    G-->>I: Simulation complete
+    I-->>A: Result + screenshot
+    A-->>U: ✅ "Box picked and placed!" + 🖼️
 ```
 
 ## Table of Contents
