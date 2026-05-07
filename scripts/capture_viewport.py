@@ -40,9 +40,19 @@ parser.add_argument("--warm-up-steps", type=int, default=30,
                     help="Number of render steps before capture (for lighting convergence)")
 args, _ = parser.parse_known_args()
 
-eye = [float(x) for x in args.eye.split(",")]
-target_pt = [float(x) for x in args.target.split(",")]
-res = [int(x) for x in args.resolution.split(",")]
+try:
+    eye = [float(x) for x in args.eye.split(",")]
+    if len(eye) != 3:
+        raise ValueError(f"Expected 3 eye values, got {len(eye)}")
+    target_pt = [float(x) for x in args.target.split(",")]
+    if len(target_pt) != 3:
+        raise ValueError(f"Expected 3 target values, got {len(target_pt)}")
+    res = [int(x) for x in args.resolution.split(",")]
+    if len(res) != 2:
+        raise ValueError(f"Expected 2 resolution values, got {len(res)}")
+except (ValueError, IndexError) as e:
+    print(f"Error: Invalid input format: {e}")
+    sys.exit(1)
 
 print(f"[capture_viewport] Starting Isaac Sim (headless)...")
 simulation_app = SimulationApp({"headless": True})

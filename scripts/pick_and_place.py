@@ -27,7 +27,13 @@ parser.add_argument("--steps", type=int, default=2000, help="Max simulation step
 parser.add_argument("--capture", type=str, default=None, help="Capture final state image")
 args, _ = parser.parse_known_args()
 
-place_position = [float(x) for x in args.place_pos.split(",")]
+try:
+    place_position = [float(x) for x in args.place_pos.split(",")]
+    if len(place_position) != 3:
+        raise ValueError(f"Expected 3 values (x,y,z), got {len(place_position)}")
+except (ValueError, IndexError) as e:
+    print(f"Error: Invalid place position format: {e}")
+    sys.exit(1)
 
 print("[pick_and_place] Starting Isaac Sim (headless)...")
 simulation_app = SimulationApp({"headless": True})

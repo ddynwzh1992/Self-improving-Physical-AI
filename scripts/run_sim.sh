@@ -50,6 +50,13 @@ fi
 SCRIPT_NAME="$1"
 shift  # Remove script name, rest are script args
 
+# Sanitize script name to prevent path traversal
+SCRIPT_NAME=$(basename "$SCRIPT_NAME")
+if [[ ! "$SCRIPT_NAME" =~ ^[a-zA-Z0-9_.-]+\.py$ ]]; then
+    echo "ERROR: Invalid script name '${SCRIPT_NAME}'. Only alphanumeric, underscore, dash, and dot allowed. Must end in .py"
+    exit 1
+fi
+
 SCRIPT_PATH="${SCRIPT_DIR}/${SCRIPT_NAME}"
 if [ ! -f "${SCRIPT_PATH}" ]; then
     echo "ERROR: Script not found: ${SCRIPT_PATH}"

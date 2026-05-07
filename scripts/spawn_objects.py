@@ -72,11 +72,23 @@ world = World(stage_units_in_meters=1.0)
 world.scene.add_default_ground_plane()
 
 # Parse scale
-scale = np.array([float(x) for x in args.scale.split(",")])
+try:
+    scale = np.array([float(x) for x in args.scale.split(",")])
+    if len(scale) != 3:
+        raise ValueError(f"Expected 3 scale values, got {len(scale)}")
+except (ValueError, IndexError) as e:
+    print(f"Error: Invalid scale format: {e}")
+    sys.exit(1)
 
 # Parse area bounds
-area_bounds = [float(x) for x in args.area.split(",")]
-x_min, x_max, y_min, y_max = area_bounds
+try:
+    area_bounds = [float(x) for x in args.area.split(",")]
+    if len(area_bounds) != 4:
+        raise ValueError(f"Expected 4 area bounds (x_min,x_max,y_min,y_max), got {len(area_bounds)}")
+    x_min, x_max, y_min, y_max = area_bounds
+except (ValueError, IndexError) as e:
+    print(f"Error: Invalid area format: {e}")
+    sys.exit(1)
 
 # Default colors for variety
 DEFAULT_COLORS = [
@@ -93,7 +105,13 @@ DEFAULT_COLORS = [
 # User-specified color
 user_color = None
 if args.color:
-    user_color = np.array([float(x) for x in args.color.split(",")])
+    try:
+        user_color = np.array([float(x) for x in args.color.split(",")])
+        if len(user_color) != 3:
+            raise ValueError(f"Expected 3 color values (R,G,B), got {len(user_color)}")
+    except (ValueError, IndexError) as e:
+        print(f"Error: Invalid color format: {e}")
+        sys.exit(1)
 
 is_dynamic = not args.static
 
@@ -102,7 +120,13 @@ spawned_objects = []
 for i in range(args.count):
     # Determine position
     if args.position and args.count == 1:
-        pos = np.array([float(x) for x in args.position.split(",")])
+        try:
+            pos = np.array([float(x) for x in args.position.split(",")])
+            if len(pos) != 3:
+                raise ValueError(f"Expected 3 position values, got {len(pos)}")
+        except (ValueError, IndexError) as e:
+            print(f"Error: Invalid position format: {e}")
+            sys.exit(1)
     else:
         # Random position within area bounds
         x = random.uniform(x_min, x_max)

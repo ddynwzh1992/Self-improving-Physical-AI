@@ -160,7 +160,11 @@ elif args.action == "move_joint":
         simulation_app.close()
         sys.exit(1)
 
-    target_joints = np.array([float(x) for x in args.joints.split(",")])
+    try:
+        target_joints = np.array([float(x) for x in args.joints.split(",")])
+    except (ValueError, IndexError) as e:
+        print(f"[robot_control] ERROR: Invalid joint values: {e}")
+        sys.exit(1)
     if len(target_joints) != 7:
         print(f"[robot_control] ERROR: Expected 7 joint values, got {len(target_joints)}")
         simulation_app.close()
@@ -198,7 +202,14 @@ elif args.action == "move_to":
         simulation_app.close()
         sys.exit(1)
 
-    target_pos = np.array([float(x) for x in args.target.split(",")])
+    try:
+        target_pos = np.array([float(x) for x in args.target.split(",")])
+        if len(target_pos) != 3:
+            raise ValueError(f"Expected 3 position values (x,y,z), got {len(target_pos)}")
+    except (ValueError, IndexError) as e:
+        print(f"[robot_control] ERROR: Invalid target format: {e}")
+        simulation_app.close()
+        sys.exit(1)
     print(f"[robot_control] Moving end effector to: {target_pos}")
 
     # Use RMPFlow for Cartesian motion

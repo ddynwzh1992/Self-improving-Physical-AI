@@ -161,7 +161,7 @@ sequenceDiagram
 
 ## Prerequisites
 
-- Ubuntu 22.04/24.04 server (AWS EC2 recommended)
+- Ubuntu 22.04/24.04 server (Amazon EC2 recommended)
 - NVIDIA GPU with RT Cores (L40S, RTX 4080+ or equivalent), 16GB+ VRAM
 - NVIDIA Driver 580+ with CUDA 12+
 - Docker with NVIDIA Container Toolkit
@@ -210,6 +210,8 @@ openclaw config patch '{
 
 ### Set Allowed Users
 
+> **⚠️ Security**: Without an allowlist, anyone who discovers your bot can send commands to control your robot simulation. This could lead to unauthorized GPU usage, data exfiltration, or denial of service. Configure this before making your bot discoverable.
+
 Find your Telegram user ID (message [@userinfobot](https://t.me/userinfobot)), then:
 
 ```bash
@@ -222,6 +224,8 @@ openclaw config patch '{
   }
 }'
 ```
+
+**Verify**: Message the bot from an unauthorized Telegram account — it should not respond.
 
 ---
 
@@ -390,18 +394,22 @@ echo "Isaac Sim streaming is ready!"
 
 ### Open Firewall Ports
 
-For **AWS EC2**, add these inbound rules to your Security Group:
+> **⚠️ Security**: These ports expose your simulation stream to the network. Without IP restrictions, anyone on the internet could view or interact with your Isaac Sim session. Always restrict to your specific IP address.
+
+For **Amazon EC2**, add these inbound rules to your Security Group:
 
 | Port | Protocol | Source | Purpose |
 |------|----------|--------|---------|
-| 49100 | TCP | Your IP | WebRTC signaling |
-| 47998 | UDP | Your IP | WebRTC media stream |
+| 49100 | TCP | Your IP only | WebRTC signaling |
+| 47998 | UDP | Your IP only | WebRTC media stream |
+
+**Verify**: After configuration, attempt to connect from a different network — it should be rejected.
 
 For other clouds or bare metal:
 
 ```bash
-sudo ufw allow 49100/tcp
-sudo ufw allow 47998/udp
+sudo ufw allow from YOUR_IP to any port 49100 proto tcp
+sudo ufw allow from YOUR_IP to any port 47998 proto udp
 ```
 
 ---
@@ -609,6 +617,50 @@ Isaac Sim 6.0.0 introduced new namespace imports (changed from 5.x). All scripts
 | `from omni.isaac.sensor import Camera` | `from isaacsim.sensors.camera import Camera` |
 | `from omni.isaac.core.controllers import BaseController` | `from isaacsim.core.api.controllers import BaseController` |
 | `from omni.isaac.manipulators.controllers import PickPlaceController` | `from isaacsim.robot.manipulators.controllers import PickPlaceController` |
+
+---
+
+## Security Considerations
+
+### Shared Responsibility Model
+
+When deploying on Amazon EC2, security is a shared responsibility. AWS secures the underlying infrastructure; you are responsible for securing your instances, data, and applications.
+
+### Network Security
+
+- **Restrict Security Group sources** to your IP address only — never use `0.0.0.0/0` for WebRTC or SSH ports
+- **Verify configuration**: attempt to connect from an unauthorized IP to confirm rules are working
+- **Use VPN or SSH tunneling** for production deployments instead of direct port exposure
+- Consider AWS Systems Manager Session Manager as an alternative to SSH
+
+### Secret Management
+
+- **Never commit bot tokens or API keys** to the repository
+- Store sensitive credentials using environment variables, AWS Secrets Manager, or Systems Manager Parameter Store
+- Rotate bot tokens periodically (every 90 days recommended)
+- Add sensitive config files to `.gitignore`
+
+### Container Security
+
+- Isaac Sim containers run with `--gpus all` — restrict to specific GPUs in multi-tenant environments
+- Docker uses host networking (`--network=host`) for streaming — consider bridge networking with explicit port mapping for tighter isolation
+- Set resource limits (`--memory`, `--cpus`) to prevent resource exhaustion
+- Verify container images against NVIDIA's published digests
+
+### Data Classification
+
+| Classification | Examples | Handling |
+|---|---|---|
+| Confidential | Bot tokens, API keys | Encrypt at rest, never commit, rotate regularly |
+| Internal | Simulation outputs, logs, cache | Restrict access via file permissions |
+| Public | Documentation, code | Open access |
+
+### Monitoring
+
+- Enable **CloudWatch** detailed monitoring for EC2 instances
+- Configure **VPC Flow Logs** to monitor network traffic to/from the simulation server
+- Set up alerts for unauthorized access attempts or unusual GPU utilization patterns
+- Log all Telegram bot interactions for audit purposes
 
 ---
 

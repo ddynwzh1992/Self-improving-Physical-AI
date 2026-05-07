@@ -24,7 +24,14 @@ import numpy as np
 
 os.environ["OMNI_KIT_ACCEPT_EULA"] = "YES"
 
-import isaacsim
+# ============================================================
+# SimulationApp MUST be instantiated before any other imports
+# ============================================================
+from isaacsim import SimulationApp
+
+simulation_app = SimulationApp({"headless": True})
+
+# Now safe to import Isaac Sim modules
 from isaacsim.core.api import World, SimulationContext
 from isaacsim.core.api.objects import DynamicCuboid, FixedCuboid, VisualCuboid
 from isaacsim.core.utils.stage import add_reference_to_stage
@@ -299,35 +306,47 @@ def spawn_manipulation_objects(world):
         objects.append(cube)
     
     # Small cylinder (like a peg)
-    from isaacsim.core.api.objects import DynamicCylinder
-    peg = DynamicCylinder(
-        prim_path="/World/Objects/peg",
-        name="peg",
-        position=np.array([0.1, 0.0, 0.02]),
-        radius=0.008,
-        height=0.05,
-        color=np.array([0.7, 0.4, 0.1]),
-        mass=0.01,
-    )
-    objects.append(peg)
+    try:
+        from isaacsim.core.api.objects import DynamicCylinder
+        peg = DynamicCylinder(
+            prim_path="/World/Objects/peg",
+            name="peg",
+            position=np.array([0.1, 0.0, 0.02]),
+            radius=0.008,
+            height=0.05,
+            color=np.array([0.7, 0.4, 0.1]),
+            mass=0.01,
+        )
+        objects.append(peg)
+    except (ImportError, Exception) as e:
+        # DynamicCylinder may not be available in all versions
+        print(f"  Note: Skipping cylinder object ({e})")
     
     return objects
 
 
-def capture_photo(cameras, output_dir, camera_name="side"):
+def capture_photo(cameras, output_dir, camera_name="side", world=None):
     """Capture a photo from specified camera"""
     cam = cameras[camera_name]
     cam.initialize()
     
-    # Get RGB image
-    rgb = cam.get_rgb()
-    if rgb is not None:
+    # Need to step a few times for the camera to render
+    if world:
+        for _ in range(5):
+            world.step(render=True)
+    
+    # Get RGBA image
+    rgba = cam.get_rgba()
+    if rgba is not None:
         from PIL import Image
-        img = Image.fromarray(rgb)
+        # Convert RGBA to RGB
+        img = Image.fromarray(rgba[:, :, :3])
         path = os.path.join(output_dir, f"{camera_name}_capture.png")
         img.save(path)
-        print(f"Photo saved: {path}")
+        print(f"Photo saved: {path} ({img.size[0]}x{img.size[1]})")
         return path
+    else:
+        print(f"Warning: No image from {camera_name} camera")
     return None
 
 
@@ -469,12 +488,12 @@ def main():
         
         # Capture from all cameras
         for cam_name in cameras:
-            capture_photo(cameras, args.output, cam_name)
+            capture_photo(cameras, args.output, cam_name, world)
         
         print(f"\nScene ready! Captures saved to {args.output}/")
     
     elif args.action == "photo":
-        capture_photo(cameras, args.output, args.camera)
+        capture_photo(cameras, args.output, args.camera, world)
     
     elif args.action == "video":
         record_video(cameras, world, args.output, args.camera, 
@@ -485,7 +504,7 @@ def main():
             positions = [float(x) for x in args.joints.split(",")]
             assert len(positions) == 6, "Need exactly 6 joint values"
             move_joints(world, robot_path, positions, steps=args.steps)
-            capture_photo(cameras, args.output, args.camera)
+            capture_photo(cameras, args.output, args.camera, world)
         else:
             print("Error: --joints required for move action")
             sys.exit(1)
@@ -514,8 +533,8 @@ def main():
             time.sleep(0.2)
         
         # Final capture
-        capture_photo(cameras, args.output, "side")
-        capture_photo(cameras, args.output, "external")
+        capture_photo(cameras, args.output, "side", world)
+        capture_photo(cameras, args.output, "external", world)
         print("Demo complete!")
     
     # Save USD if requested
@@ -535,6 +554,7 @@ def main():
     print("="*60)
     
     world.stop()
+    simulation_app.close()
 
 
 if __name__ == "__main__":

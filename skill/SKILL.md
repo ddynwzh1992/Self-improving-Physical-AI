@@ -202,6 +202,32 @@ This directory is mounted as `/output/` inside the container. To return images t
 | "add boxes" / "spawn objects" | `spawn_objects.py` | `--type`, `--count`, `--position` |
 | "drop random objects" | `spawn_objects.py` | `--type sphere --count N` |
 
+## Safety Requirements
+
+When using this skill for robot control (especially with real hardware via Sim2Real):
+
+### Human-in-the-Loop
+- Safety-critical commands (real robot movement, gripper operations) should require explicit user confirmation before execution
+- The AI agent should describe the planned action and await approval: "I will move the arm to (0.4, 0, 0.4). Confirm?"
+
+### Motion Limits and Workspace Boundaries
+- Joint positions must stay within servo limits (defined per robot model)
+- Cartesian targets must fall within the robot's reachable workspace
+- Maximum velocity and acceleration limits should be enforced
+
+### Emergency Stop
+- Support an immediate halt command ("stop", "emergency stop", "e-stop") that cancels all pending motions
+- On connection loss to the real robot, default to a safe stopped state
+
+### Audit Logging
+- Log all commands with timestamp, user ID, command type, and parameters
+- Log execution results (success/failure, actual vs. commanded positions)
+- Retain logs for incident investigation and continuous improvement
+
+### Simulation vs. Real Distinction
+- Clearly distinguish simulation-only commands from real-robot commands in the interface
+- Default to simulation mode; require explicit confirmation to switch to real hardware control
+
 ## Notes
 
 - All simulation is **headless** (no display required).
